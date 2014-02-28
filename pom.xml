@@ -27,15 +27,14 @@
             <version>2.2.1</version>
         </dependency>
         <dependency>
-            <groupId>com.github.goldin</groupId>
-            <artifactId>spock-extensions</artifactId>
-            <version>0.1.4</version>
-        </dependency>
-        <dependency>
             <groupId>org.spockframework</groupId>
             <artifactId>spock-core</artifactId>
             <version>0.7-groovy-2.0</version>
         </dependency>
-
+        <dependency>
+            <groupId>cglib</groupId>
+            <artifactId>cglib-nodep</artifactId>
+            <version>3.1</version>
+        </dependency>
     </dependencies>
 </project>
