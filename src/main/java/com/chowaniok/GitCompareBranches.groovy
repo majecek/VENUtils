@@ -32,7 +32,7 @@ class GitCompareBranches {
                 println("Path to git repo not defined -i.e. groovy GitCompareBranches.groovy  origin/master..origin/development  /path/to/git/repo")
                 println("Checking properties file")
                 def config = new ConfigSlurper().parse(getClass().getClassLoader().getResource("private.properties"))
-                gitRepoPath = config.git.gitRepoPath
+                gitRepoPath = config.git.path
                 if (gitRepoPath.size() == 0) {
                     throw new InvalidPropertiesFormatException("Path to git repo is not set in private.properties - i.e. git.gitRepoPath = /path/to/my/git/repo")
                 }
@@ -43,11 +43,16 @@ class GitCompareBranches {
     }
 
     def retrieveCommitHashes() {
-        def checkBranchesForDifferentCommits = executeOnShell("git log --oneline  --no-merges ".concat(branchNames))
+        def checkBranchesForDifferentCommits = executeOnShell("git log --pretty=format:\"%h - %an, %ar : %s\" --no-merges ".concat(branchNames))
         checkBranchesForDifferentCommits.eachLine {
             def commitHashID = new HashIDWithJiraID()
-            commitHashID.setHashID(it.substring(0, 7))
-            commitHashID.setJiraID(it.substring(8, it.length() < 17 ? it.length() : 17))
+            def separator1 = it.indexOf('-')
+            commitHashID.setHashID(it.substring(0, separator1))
+            def separator2 = it.indexOf(',',separator1)
+            commitHashID.setAuthor(it.substring(separator1+2, separator2))
+            def separator3 = it.indexOf(':',separator2)
+            commitHashID.setDate(it.substring(separator2+2,separator3))
+            commitHashID.setJiraID(it.substring(separator3+2, it.length() < separator3+12 ? it.length() : separator3+12))
             hashes.add(commitHashID)
         }
     }
@@ -61,6 +66,8 @@ class GitCompareBranches {
                 changedFilesWithingCommit.setChangedFile(it2)
                 changedFilesWithingCommit.setHashID(it.getHashID())
                 changedFilesWithingCommit.setJiraID(it.getJiraID())
+                changedFilesWithingCommit.setAuthor(it.getAuthor())
+                changedFilesWithingCommit.setDate(it.getDate())
                 changedFiles.add(changedFilesWithingCommit)
             }
         }
@@ -72,7 +79,7 @@ class GitCompareBranches {
             def gitCommand = "git diff -w ".concat(branchNames).concat(" ").concat(it.getChangedFile())
             def isFileDifferent = executeOnShell(gitCommand)
             if (isFileDifferent.size() > 0) {
-                println("${it.getHashID()} - ${it.getJiraID()} - ${it.getChangedFile()} \t - ${gitCommand}")
+                println("${it.getHashID()} - ${it.getAuthor()} - ${it.getDate()} - ${it.getJiraID()} - ${it.getChangedFile()} \t - ${gitCommand}")
             } else {
                 listofCorrectCommits.add(it.getHashID())
             }
@@ -111,6 +118,7 @@ class GitCompareBranches {
 
     public static void main(String[] args) {
         new GitCompareBranches().run(args)
+//        new GitCompareBranches().run(["origin/rel81..origin/rel81dev"])
     }
 }
 
@@ -118,9 +126,13 @@ class ChangedFilesWithHashID {
     def changedFile
     def hashID
     def jiraID
+    def author
+    def date
 }
 
 class HashIDWithJiraID {
     def jiraID
     def hashID
+    def author
+    def date
 }
